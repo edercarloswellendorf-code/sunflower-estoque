@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Insumo {
+  id        String   @id @default(uuid())
+  nome      String
+  unidade   String
+  min       Decimal? @db.Decimal(12, 3)
+  max       Decimal? @db.Decimal(12, 3)
+  criadoEm  DateTime @default(now())
+
+  grupos    GrupoInsumo[]
+  respostas ContagemResposta[]
+  cotacoes  Cotacao[]
+
+  @@map("insumos")
+}
+
+model Grupo {
+  id       String   @id @default(uuid())
+  nome     String
+  criadoEm DateTime @default(now())
+
+  insumos GrupoInsumo[]
+
+  @@map("grupos")
+}
+
+// Associação insumo <-> grupo, com a ordem física definida por arrastar
+model GrupoInsumo {
+  grupoId  String
+  insumoId String
+  ordem    Int
+
+  grupo  Grupo  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  insumo Insumo @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+
+  @@id([grupoId, insumoId])
+  @@unique([insumoId]) // um insumo só pode estar em um grupo por vez
+  @@map("grupo_insumos")
+}
+
+model ContagemInstancia {
+  id             String   @id @default(uuid())
+  codigo         String   @unique
+  dataReferencia DateTime @db.Date
+  criadoEm       DateTime @default(now())
+
+  respostas ContagemResposta[]
+
+  @@map("contagem_instancias")
+}
+
+model ContagemResposta {
+  id          String   @id @default(uuid())
+  instanciaId String
+  insumoId    String
+  valor       Decimal  @db.Decimal(12, 3)
+  registradoEm DateTime @default(now())
+
+  instancia ContagemInstancia @relation(fields: [instanciaId], references: [id], onDelete: Cascade)
+  insumo    Insumo            @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+
+  @@unique([instanciaId, insumoId])
+  @@map("contagem_respostas")
+}
+
+model Cotacao {
+  id         String   @id @default(uuid())
+  insumoId   String
+  fornecedor String
+  preco      Decimal  @db.Decimal(12, 2)
+  criadoEm   DateTime @default(now())
+
+  insumo Insumo @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+
+  @@map("cotacoes")
+}
